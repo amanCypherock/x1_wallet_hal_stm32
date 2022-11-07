@@ -222,7 +222,7 @@ typedef struct
  *   @retval    STM_SUCCESS     If the communication was initialized successfully. Otherwise,
  *                              an error code is returned.
  */
-ret_code_t adafruit_pn532_init(bool force);
+ret_code_t adafruit_pn532_init(bool force, uint8_t mode);
 
 /**  @brief Function for creating a new PN532 object using I2C.
  *
@@ -559,5 +559,15 @@ ret_code_t adafruit_pn532_deselect();
  * @retval `otherwise` Indicates unsuccessful operation
  */
 ret_code_t adafruit_pn532_release();
+
+ret_code_t adafruit_pn532_set_parameters(void);
+
+ret_code_t adafruit_pn532_init_as_target(void);
+
+ret_code_t adafruit_pn532_get_data(uint8_t *data, uint8_t *len);
+
+ret_code_t adafruit_pn532_set_data(uint8_t *data, uint8_t len);
+
+ret_code_t adafruit_pn532_post_init();
 
 #endif
