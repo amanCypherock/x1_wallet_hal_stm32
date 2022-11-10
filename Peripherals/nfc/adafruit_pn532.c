@@ -264,7 +264,7 @@ static ret_code_t adafruit_pn532_header_check(uint8_t const * p_buffer, uint8_t 
 }
 
 
-ret_code_t adafruit_pn532_init(bool force, uint8_t mode)
+ret_code_t adafruit_pn532_init(bool force)
 {
     uint32_t ver_data; // Variable to store firmware version read from PN532.
 
@@ -300,7 +300,7 @@ ret_code_t adafruit_pn532_init(bool force, uint8_t mode)
     }
 
 
-    err_code = adafruit_pn532_sam_config(mode);
+    err_code = adafruit_pn532_sam_config(SAMCONFIGURATION_MODE_NORMAL);
     if (err_code != STM_SUCCESS)
     {
         return err_code;
@@ -1234,31 +1234,25 @@ ret_code_t adafruit_diagnose_self_antenna(uint8_t threshold)
     return m_pn532_packet_buf[PN532_DATA_OFFSET + 1];
 }
 
-ret_code_t adafruit_pn532_init_as_target(void)
+ret_code_t adafruit_pn532_init_as_target(uint8_t params[], uint16_t timeout)
 {
-    //
-    // Prepare command.
-    uint8_t mifare_params[] = {0x08, 0x00, 0xdc, 0x44, 0x20, 0x60};
-    uint8_t pol_res[] = {0x01, 0xFE, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xC0, 0xC1, 0xC2, 0xC3, 0xC4, 0xC5, 0xC6, 0xC7, 0xFF, 0xFF};
-    uint8_t nfcid3t[] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a};
-//    uint8_t general_bytes[] = {0};
-    uint8_t hist_bytes[]= {0x52, 0x46, 0x49, 0x44, 0x49, 0x4f, 0x74, 0x20, 0x50, 0x4e, 0x35, 0x33, 0x32};
     uint8_t p_response_len = 100, off = 0;
-    uint16_t timeout = 20000;
-
     m_pn532_packet_buf[off++] = PN532_COMMAND_TGINITASTARGET;
     m_pn532_packet_buf[off++] = 4;        // mode
-    memcpy(m_pn532_packet_buf + off, mifare_params, sizeof(mifare_params));
-    off += sizeof(mifare_params);
-    memcpy(m_pn532_packet_buf + off, pol_res, sizeof(pol_res));
-    off += sizeof(pol_res);
-    memcpy(m_pn532_packet_buf + off, nfcid3t, sizeof(nfcid3t));
-    off += sizeof(nfcid3t);
-    m_pn532_packet_buf[off++] = 0;       // LEN Gt
-    m_pn532_packet_buf[off++] = sizeof(hist_bytes);       // LEN Tk
-    memcpy(m_pn532_packet_buf + off, hist_bytes, sizeof(hist_bytes));
-    off += sizeof(hist_bytes);
-
+    memcpy(m_pn532_packet_buf + off, params, 6+18+10);    //copy mifare_params, pol_res and nfcid3t
+    off += 34;
+    m_pn532_packet_buf[off] = params[off-2];  //general bytes len
+    off++;
+    if(m_pn532_packet_buf[off-1] != 0){     //copy general byes if size not zero
+        memcpy(m_pn532_packet_buf + off, params + off -2, m_pn532_packet_buf[off-1]);
+        off+m_pn532_packet_buf[off-1];
+    }
+    m_pn532_packet_buf[off] = params[off - 2];  //historical bytes len
+    off++;
+    if(m_pn532_packet_buf[off-1] != 0){     //copy historical byes if size not zero
+        memcpy(m_pn532_packet_buf + off, params + off - 2, m_pn532_packet_buf[off]);
+        off+m_pn532_packet_buf[off];
+    }
     ret_code_t err_code = adafruit_pn532_cmd_send(m_pn532_packet_buf,
                                                   off,
                                                   1000);
@@ -1292,15 +1286,6 @@ ret_code_t adafruit_pn532_init_as_target(void)
         m_pn532_packet_buf[PN532_DATA_OFFSET] != (PN532_COMMAND_TGINITASTARGET + 1)) {
         return STM_ERROR_INTERNAL;
     }
-
-//    BSP_DelayMs(30000);
-    // Check InDataExchange Status byte.
-//    if ((m_pn532_packet_buf[PN532_DATA_OFFSET + 1] & PN532_STATUS_ERROR_MASK) != 0x00)
-//    {
-//        //STM_LOG_INFO("Status code indicates an error, %02x",
-//                     //m_pn532_packet_buf[PN532_DATA_OFFSET + 1]);
-//        return STM_ERROR_INTERNAL;
-//    }
 
     return STM_SUCCESS;
 }
@@ -1460,7 +1445,7 @@ ret_code_t adafruit_pn532_in_release()
     return STM_SUCCESS;
 }
 
-ret_code_t adafruit_pn532_get_target_status()
+uint8_t adafruit_pn532_get_target_status()
 {
     uint16_t timeout = 0;
     m_pn532_packet_buf[0] = PN532_COMMAND_TGGETTARGETSTATUS;
@@ -1500,7 +1485,8 @@ ret_code_t adafruit_pn532_get_target_status()
         return STM_ERROR_INTERNAL;
     }
 
-    return STM_SUCCESS;
+    return m_pn532_packet_buf[PN532_DATA_OFFSET+1];
+
 }
 
 ret_code_t adafruit_pn532_post_init()
