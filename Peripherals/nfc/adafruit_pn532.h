@@ -571,4 +571,6 @@ ret_code_t adafruit_pn532_set_data(uint8_t *data, uint8_t len);
 ret_code_t adafruit_pn532_post_init();
 
 uint8_t adafruit_pn532_get_target_status();
+
+ret_code_t adafruit_pn532_in_release();
 #endif
