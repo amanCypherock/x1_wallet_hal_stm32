@@ -12,6 +12,7 @@ TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim6;
 RNG_HandleTypeDef hrng;
+UART_HandleTypeDef huart3;
 
 uint32_t joystick_pressed = 0xff;
 uint32_t buzzer_counter=0, bsp_tick=0;
@@ -129,6 +130,54 @@ void BSP_LPUART1_UART_Init(uint32_t baudrate)
 	HAL_UART_ReceiverTimeout_Config(&hlpuart1, 24);
   /* USER CODE END USART3_Init 2 */
 
+}
+
+/**
+  * @brief USART3 Initialization Function
+  * @param None
+  * @retval None
+  */
+void BSP_USART3_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART3_Init 0 */
+
+  /* USER CODE END USART3_Init 0 */
+
+  /* USER CODE BEGIN USART3_Init 1 */
+
+  /* USER CODE END USART3_Init 1 */
+  huart3.Instance = USART3;
+  huart3.Init.BaudRate = 115200;
+  huart3.Init.WordLength = UART_WORDLENGTH_8B;
+  huart3.Init.StopBits = UART_STOPBITS_1;
+  huart3.Init.Parity = UART_PARITY_NONE;
+  huart3.Init.Mode = UART_MODE_TX_RX;
+  huart3.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart3.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart3.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart3.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  
+  if(HAL_UART_DeInit(&huart3) != HAL_OK)
+  {
+    Error_Handler();
+  } 
+  if (HAL_UART_Init(&huart3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART3_Init 2 */
+
+  /* USER CODE END USART3_Init 2 */
+
+}
+
+uint8_t BSP_UART3_Write(uint8_t *data, uint16_t size){
+  return HAL_UART_Transmit_IT(&huart3, data, size);
+}
+
+uint8_t BSP_UART3_Read(uint8_t *data, uint16_t size){
+	return HAL_UART_Receive_IT(&huart3, data, size);
 }
 
 void BSP_LPUART1_UART_DeInit(){
