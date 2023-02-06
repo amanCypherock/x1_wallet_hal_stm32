@@ -74,6 +74,7 @@
 #include "adafruit_pn532.h"
 #include "board.h"
 #include "app_error.h"
+#include "logger.h"
 
 #define STM_LOG_MODULE_NAME adafruit_pn532
 #if ADAFRUIT_PN532_LOG_ENABLED
@@ -857,13 +858,13 @@ ret_code_t adafruit_pn532_data_read(uint8_t * p_buff, uint8_t n)
 
     ret_code_t err_code;
     // In case of I2C, read the additional status byte.
-
     err_code = BSP_I2C1_IO_Read(PN532_I2C_ADDRESS, m_pn532_rxtx_buffer, n + 1);
     if (err_code != STM_SUCCESS)
     {
         return NFC_IO_ERROR_BASE + err_code;
     }
     memcpy(p_buff, m_pn532_rxtx_buffer + 1, n);
+    // log_hex_array("PN532 Read: ", m_pn532_rxtx_buffer+1, n);
 
 
     return STM_SUCCESS;
@@ -909,6 +910,7 @@ ret_code_t adafruit_pn532_command_write(uint8_t * p_cmd, uint8_t cmd_len)
     m_pn532_rxtx_buffer[HEADER_SEQUENCE_LENGTH + cmd_len + 1] = PN532_POSTAMBLE;
 
 
+    // log_hex_array("PN532 Write: ", m_pn532_rxtx_buffer, cmd_len+PN532_FRAME_OVERHEAD);
     err_code = BSP_I2C1_IO_Write(PN532_I2C_ADDRESS,
                               m_pn532_rxtx_buffer,
                               cmd_len + PN532_FRAME_OVERHEAD);
@@ -1238,7 +1240,7 @@ ret_code_t adafruit_pn532_init_as_target(uint8_t params[], uint16_t timeout)
 {
     uint8_t p_response_len = 100, off = 0;
     m_pn532_packet_buf[off++] = PN532_COMMAND_TGINITASTARGET;
-    m_pn532_packet_buf[off++] = 4;        // mode
+    m_pn532_packet_buf[off++] = 5;        // mode
     memcpy(m_pn532_packet_buf + off, params, 6+18+10);    //copy mifare_params, pol_res and nfcid3t
     off += 34;
     m_pn532_packet_buf[off] = params[off-2];  //general bytes len
@@ -1292,13 +1294,13 @@ ret_code_t adafruit_pn532_init_as_target(uint8_t params[], uint16_t timeout)
 
 ret_code_t adafruit_pn532_get_data(uint8_t *data, uint8_t *p_response_len)
 {
-    uint16_t timeout = 3000;
+    uint16_t timeout = 10000;
 //    uint8_t get_data[] = {PN532_HOSTTOPN532, PN532_COMMAND_TGGETDATA};
     m_pn532_packet_buf[0] = PN532_COMMAND_TGGETDATA;
 
     ret_code_t err_code = adafruit_pn532_cmd_send(m_pn532_packet_buf,
                                                   1,
-                                                  1000);
+                                                  10000);
     if (err_code != STM_SUCCESS)
     {
         //STM_LOG_INFO("Could not send ADPU, err_code = %d", err_code);
@@ -1314,7 +1316,7 @@ ret_code_t adafruit_pn532_get_data(uint8_t *data, uint8_t *p_response_len)
     if (!adafruit_pn532_waitready_ms(timeout))
     {
         //STM_LOG_INFO("IRQ time-out");
-        return STM_ERROR_INTERNAL;
+        return STM_ERROR_INTERNAL+0x1000;
     }
 
     err_code = adafruit_pn532_data_read(m_pn532_packet_buf,
@@ -1327,14 +1329,14 @@ ret_code_t adafruit_pn532_get_data(uint8_t *data, uint8_t *p_response_len)
 
     if ((m_pn532_packet_buf[PN532_TFI_OFFSET] != PN532_PN532TOHOST) &&
         m_pn532_packet_buf[PN532_DATA_OFFSET] != (PN532_COMMAND_TGGETDATA + 1)) {
-        return STM_ERROR_INTERNAL;
+        return STM_ERROR_INTERNAL+0x2000;
     }
 
     if ((m_pn532_packet_buf[PN532_DATA_OFFSET + 1] & PN532_STATUS_ERROR_MASK) != 0x00)
     {
         //STM_LOG_INFO("Status code indicates an error, %02x",
                      //m_pn532_packet_buf[PN532_DATA_OFFSET + 1]);
-        return STM_ERROR_INTERNAL;
+        return STM_ERROR_INTERNAL+0x3000;
     }
 
     memcpy(data, m_pn532_packet_buf+PN532_DATA_OFFSET+2, *p_response_len);
