@@ -1307,6 +1307,8 @@ ret_code_t adafruit_pn532_get_data(uint8_t *data, uint8_t *p_response_len)
         return err_code;
     }
 
+    memzero(m_pn532_packet_buf, sizeof(m_pn532_packet_buf));
+
     // Give PN532 a little time to scan in case time-out is very small.
     if (timeout < PN532_DEFAULT_WAIT_FOR_READY_TIMEOUT)
     {
@@ -1334,15 +1336,16 @@ ret_code_t adafruit_pn532_get_data(uint8_t *data, uint8_t *p_response_len)
 
     if ((m_pn532_packet_buf[PN532_DATA_OFFSET + 1] & PN532_STATUS_ERROR_MASK) != 0x00)
     {
-        //STM_LOG_INFO("Status code indicates an error, %02x",
-                     //m_pn532_packet_buf[PN532_DATA_OFFSET + 1]);
+        LOG_CRITICAL("Status code indicates an error, %02x",
+                     m_pn532_packet_buf[PN532_DATA_OFFSET + 1]);
         return STM_ERROR_INTERNAL+0x3000;
     }
 
+    *p_response_len = m_pn532_packet_buf[3]-3;
     memcpy(data, m_pn532_packet_buf+PN532_DATA_OFFSET+2, *p_response_len);
 
     // TODO: Copy actual data and length into the function parameters
-
+    LOG_INFO("Reached get data end");
     return STM_SUCCESS;
 }
 
@@ -1389,8 +1392,8 @@ ret_code_t adafruit_pn532_set_data(uint8_t *data, uint8_t len)
 
     if ((m_pn532_packet_buf[PN532_DATA_OFFSET + 1] & PN532_STATUS_ERROR_MASK) != 0x00)
     {
-        //STM_LOG_INFO("Status code indicates an error, %02x",
-                     //m_pn532_packet_buf[PN532_DATA_OFFSET + 1]);
+        STM_LOG_INFO("Status code indicates an error, %02x",
+                     m_pn532_packet_buf[PN532_DATA_OFFSET + 1]);
         return STM_ERROR_INTERNAL;
     }
 
